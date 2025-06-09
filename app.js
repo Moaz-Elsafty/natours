@@ -8,6 +8,7 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
+const cors = requrie('cors');
 
 const ApiError = require('./utils/apiError');
 const globalError = require('./middlewares/errorMiddleware');
@@ -32,6 +33,11 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Serving static files
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Implement CORS
+// Enable other domains to access my API
+app.use(cors());
+app.options('*', cors());
 
 // Set security HTTP headers
 app.use(
