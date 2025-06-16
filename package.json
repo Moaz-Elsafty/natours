@@ -33,7 +33,7 @@
     "mongodb": "^6.10.0",
     "mongoose": "^8.8.0",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.2",
+    "multer": "^1.4.7",
     "natours": "file:",
     "nodemailer": "^6.9.16",
     "pug": "^3.0.3",
