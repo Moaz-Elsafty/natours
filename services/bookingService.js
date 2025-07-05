@@ -3,6 +3,7 @@ const asyncHandler = require('express-async-handler');
 const Tour = require('../models/tourModel');
 const Booking = require('../models/bookingModel.js');
 const factory = require('../services/handlerFactory.js');
+const ApiError = require('../utils/apiError.js');
 
 exports.getChechoutSession = asyncHandler(async (req, res, next) => {
   // 1) Get the booked tour
@@ -50,6 +51,28 @@ exports.createBookingCheckout = asyncHandler(async (req, res, next) => {
   res.redirect(req.originalUrl.split('?')[0]);
 });
 
+// For Admins and Manual creation
+
+// This function prevents the same user to book the same tour twice
+exports.bookedBefore = async (req, res, next) => {
+  // 1) get booking with the tourID & userID if exists
+  const booked = await Booking.findOne({
+    tour: req.body.tour,
+    user: req.body.user,
+  });
+
+  // 2) if exists reject the request
+  if (booked) {
+    return next(
+      new ApiError(
+        'There is a booking with that same tour by the same user',
+        400,
+      ),
+    );
+  }
+
+  next();
+};
 exports.createBooking = factory.createOne(Booking);
 exports.getBooking = factory.getOne(Booking);
 exports.getAllBooking = factory.getAll(Booking);

@@ -2,6 +2,12 @@ const express = require('express');
 const tourService = require('../services/tourService');
 const authService = require('../services/authService');
 const reviewRouter = require('./reviewRoutes');
+const {
+  createTourValidator,
+  getTourValidator,
+  updateTourValidator,
+  deleteTourValidator,
+} = require('./../utils/validators/tourValidator');
 
 const router = express.Router();
 
@@ -32,22 +38,25 @@ router
   .post(
     authService.protect,
     authService.allowedTo('admin', 'lead-guide'),
+    createTourValidator,
     tourService.createTour,
   );
 
 router
   .route('/:id')
-  .get(tourService.getTour)
+  .get(getTourValidator, tourService.getTour)
   .patch(
     authService.protect,
     authService.allowedTo('admin', 'lead-guide'),
     tourService.uploadTourImages,
     tourService.resizeTourImages,
+    updateTourValidator,
     tourService.updateTour,
   )
   .delete(
     authService.protect,
     authService.allowedTo('admin', 'lead-guide'),
+    deleteTourValidator,
     tourService.deleteTour,
   );
 

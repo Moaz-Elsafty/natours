@@ -29,8 +29,7 @@ const reviewSchema = new mongoose.Schema(
     },
   },
   {
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    timestamps: true,
   },
 );
 
@@ -38,10 +37,17 @@ reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 
 // Query Middleware
 reviewSchema.pre(/^find/, function (next) {
-  this.populate({
-    path: 'user',
-    select: 'name photo',
-  });
+  this.populate([
+    {
+      path: 'user',
+      select: 'name photo',
+    },
+    {
+      path: 'tour',
+      select: 'name',
+      options: { virtuals: false },
+    },
+  ]).lean({ virtuals: false });
   next();
 });
 

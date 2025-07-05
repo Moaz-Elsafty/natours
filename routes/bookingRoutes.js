@@ -2,6 +2,13 @@ const express = require('express');
 const bookingService = require('../services/bookingService');
 const authService = require('../services/authService');
 
+const {
+  getBookingValidator,
+  createBookingValidator,
+  updateBookingValidator,
+  deleteBookingValidator,
+} = require('../utils/validators/bookingValidator');
+
 const router = express.Router();
 
 router.use(authService.protect);
@@ -13,12 +20,16 @@ router.use(authService.allowedTo('admin', 'lead-guide'));
 router
   .route('/')
   .get(bookingService.getAllBooking)
-  .post(bookingService.createBooking);
+  .post(
+    createBookingValidator,
+    bookingService.bookedBefore,
+    bookingService.createBooking,
+  );
 
 router
   .route('/:id')
-  .get(bookingService.getBooking)
-  .patch(bookingService.updateBooking)
-  .delete(bookingService.deleteBooking);
+  .get(getBookingValidator, bookingService.getBooking)
+  .patch(updateBookingValidator, bookingService.updateBooking)
+  .delete(deleteBookingValidator, bookingService.deleteBooking);
 
 module.exports = router;

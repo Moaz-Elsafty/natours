@@ -10,7 +10,7 @@ const tourSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       maxlength: [40, 'A tour name must have less or equal than 40 characters'],
-      minlength: [10, 'A tour name must have more or equal than 10 characters'],
+      minlength: [5, 'A tour name must have more or equal than 10 characters'],
       // validate: [validator.isAlpha, 'A tour name must only contain characters'],
     },
     slug: {
@@ -156,13 +156,15 @@ tourSchema.pre(/^find/, function (next) {
   next();
 });
 
-tourSchema.pre(/^find/, function (next) {
-  this.populate({
-    path: 'guides',
-    select: '-__v -passwordChangedAt',
-  });
-  next();
-});
+// This part is removed and been handled in the getOne function inside handlerFactory file
+
+// tourSchema.pre(/^find/, function (next) {
+//   this.populate({
+//     path: 'guides',
+//     select: '-__v -passwordChangedAt',
+//   });
+//   next();
+// });
 
 // Aggregation Middleware >> made to hide the secret tour documents from the aggregation calculations
 // tourSchema.pre('aggregate', function (next) {

@@ -12,11 +12,10 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email required'],
-    unique: [true, 'This email is not available'],
+    required: true,
+    unique: true,
     trim: true,
     lowercase: true,
-    validate: [validator.isEmail, 'Invalid Email'],
   },
   photo: {
     type: String,
@@ -30,7 +29,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Password required'],
-    minlength: [8, 'The password must be more than or equal 6 characters'],
+    minlength: [8, 'Password must be at least 8 characters'],
     select: false,
   },
   passwordConfirm: {
