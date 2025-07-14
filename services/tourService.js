@@ -65,8 +65,8 @@ exports.aliasTopTours = (req, res, next) => {
 
 exports.getAllTours = factory.getAll(Tour);
 exports.getTour = factory.getOne(Tour, [
-  { path: 'reviews' },
-  { path: 'guides' },
+  { path: 'guides', select: '-__v -passwordChangedAt' },
+  { path: 'reviews', select: '-__v ' },
 ]);
 exports.createTour = factory.createOne(Tour);
 exports.updateTour = factory.updateOne(Tour);

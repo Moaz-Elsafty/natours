@@ -36,20 +36,19 @@ const reviewSchema = new mongoose.Schema(
 reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 
 // Query Middleware
-reviewSchema.pre(/^find/, function (next) {
-  this.populate([
-    {
-      path: 'user',
-      select: 'name photo',
-    },
-    {
-      path: 'tour',
-      select: 'name',
-      options: { virtuals: false },
-    },
-  ]).lean({ virtuals: false });
-  next();
-});
+// reviewSchema.pre(/^find/, function (next) {
+//   this.populate([
+//     {
+//       path: 'user',
+//       select: 'name photo',
+//     },
+//     {
+//       path: 'tour',
+//       select: 'name',
+//     },
+//   ]);
+//   next();
+// });
 
 reviewSchema.statics.calcAverageRatings = async function (tourId) {
   const result = await this.aggregate([

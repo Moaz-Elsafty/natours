@@ -9,7 +9,7 @@ const {
   deleteBookingValidator,
 } = require('../utils/validators/bookingValidator');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
 router.use(authService.protect);
 
@@ -19,7 +19,7 @@ router.use(authService.allowedTo('admin', 'lead-guide'));
 
 router
   .route('/')
-  .get(bookingService.getAllBooking)
+  .get(bookingService.createFilterObj, bookingService.getAllBooking)
   .post(
     createBookingValidator,
     bookingService.bookedBefore,

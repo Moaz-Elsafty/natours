@@ -2,6 +2,7 @@ const { check, body } = require('express-validator');
 const Tour = require('../../models/tourModel');
 const User = require('../../models/userModel');
 const Review = require('../../models/reviewModel');
+const Booking = require('../../models/bookingModel');
 
 const {
   validatorMiddleware,
@@ -35,6 +36,16 @@ exports.createReviewValidator = [
     .custom(async (id) => {
       const tour = await Tour.findOne({ _id: id });
       if (!tour) throw new Error(`There is no tour with that id: ${id}`);
+      return true;
+    })
+    // custom validatoin that not allowing and user to create a review on a tour that he hasn't booked
+    .custom(async (val, { req }) => {
+      // 1) Check if there is a booking with the same tourId and and logged in user
+      const booked = await Booking.findOne({ tour: val, user: req.user._id });
+      // 2) if there is no booking block the process
+      if (!booked)
+        throw new Error('You have to book the tour first to make a review');
+      // 3) if there is, then proceed with the creation validation
       return true;
     }),
 
@@ -92,7 +103,6 @@ exports.deleteReviewValidator = [
       if (!review) throw new Error(`There is no review with that id: ${id}`);
 
       if (review.user._id.toString() !== req.user._id.toString()) {
-        console.log('in');
         throw new Error(`You are not allowed to perform this action`);
       }
       return true;

@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const authService = require('../services/authService');
 const userService = require('../services/userService');
+const bookingRouter = require('./bookingRoutes');
 const {
   createUserValidator,
   getUserValidator,
@@ -47,6 +48,9 @@ router.delete('/deleteMe', userService.deleteMe);
 
 // Admins Operations
 router.use(authService.allowedTo('admin'));
+
+// get all the bookings for specific user
+router.use('/:userId/bookings', bookingRouter);
 
 router
   .route('/')

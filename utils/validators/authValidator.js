@@ -8,15 +8,11 @@ const {
 exports.logInValidator = [
   body('email')
     .notEmpty()
-    .withMessage('Email required')
+    .withMessage('Email is required')
     .isEmail()
     .withMessage('Invalid email address'),
 
-  body('password')
-    .notEmpty()
-    .withMessage('Password required')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters'),
+  body('password').notEmpty().withMessage('Password required'),
   validatorMiddleware,
 ];
 

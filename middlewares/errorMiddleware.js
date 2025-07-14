@@ -22,7 +22,7 @@ const sendErrorForProd = (err, req, res) => {
   if (req.originalUrl.startsWith('/api')) {
     // A) Operational, trusted error: send message to client
     if (err.isOperational) {
-      return res.status(err.statusCode).render('error', {
+      return res.status(err.statusCode).json({
         title: 'Something went wrong!',
         msg: err.message,
       });
@@ -32,9 +32,10 @@ const sendErrorForProd = (err, req, res) => {
     console.error('ERROR', err);
 
     // 2) Send generic message
-    return res.status(err.statusCode).render('error', {
+    return res.status(err.statusCode).json({
       title: 'Something went wrong!',
-      msg: 'Please try again later',
+      msg: err.message,
+      stack: err.stack,
     });
   }
 

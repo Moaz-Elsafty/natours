@@ -2,6 +2,7 @@ const express = require('express');
 const tourService = require('../services/tourService');
 const authService = require('../services/authService');
 const reviewRouter = require('./reviewRoutes');
+const bookingRouter = require('./bookingRoutes');
 const {
   createTourValidator,
   getTourValidator,
@@ -12,6 +13,8 @@ const {
 const router = express.Router();
 
 router.use('/:tourId/reviews', reviewRouter);
+
+router.use('/:tourId/bookings', bookingRouter);
 
 router
   .route('/top-5-cheap')

@@ -73,6 +73,18 @@ exports.bookedBefore = async (req, res, next) => {
 
   next();
 };
+
+// for the nested route /api/v1/tours/:tourId/bookings
+// &
+// for the nested route /api/v1/users/:id/bookings
+exports.createFilterObj = (req, res, next) => {
+  let filterObj = {};
+  if (req.params.tourId) filterObj = { tour: req.params.tourId };
+  if (req.params.userId) filterObj = { user: req.params.userId };
+  req.filterObj = filterObj;
+  next();
+};
+
 exports.createBooking = factory.createOne(Booking);
 exports.getBooking = factory.getOne(Booking);
 exports.getAllBooking = factory.getAll(Booking);
