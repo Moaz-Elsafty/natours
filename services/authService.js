@@ -40,9 +40,59 @@ exports.signup = asyncHandler(async (req, res, next) => {
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
   });
-  const url = `${req.protocol}://${req.get('host')}/me`;
-  await new Email(newUser, url).sendWelcome();
-  createSendToken(newUser, 201, req, res);
+
+  // Prepare the activation url and then send it to the user via email to activate his account first.
+  const token = newUser.createActivationToken();
+  await newUser.save({ validateBeforeSave: false });
+
+  try {
+    const url = `${req.protocol}://${req.get('host')}/api/v1/users/activate/${token}`;
+    await new Email(newUser, url).sendWelcome();
+  } catch (err) {
+    newUser.activationToken = undefined;
+    newUser.activationExpires = undefined;
+
+    await newUser.save({ validateBeforeSave: false });
+
+    return next(
+      new ApiError(
+        'There was an error sending the email. Try again later!',
+        500,
+      ),
+    );
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Activation token sent to your email!',
+  });
+  // createSendToken(newUser, 201, req, res);
+});
+
+// Activate Account
+exports.activateAcc = asyncHandler(async (req, res, next) => {
+  const hashedActivationToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  // 1) Get user based on the token
+  const user = await User.findOne({
+    activationToken: hashedActivationToken,
+    activationExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new ApiError('Token is invalid or has expired', 400));
+  }
+  // 2) Activate the Account
+  user.active = true;
+  user.activationToken = undefined;
+  user.activationExpires = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  // 3) Send the token via email
+  res.status(200).json({ message: 'Account activated successfully' });
 });
 
 exports.login = asyncHandler(async (req, res, next) => {
@@ -58,6 +108,10 @@ exports.login = asyncHandler(async (req, res, next) => {
 
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new ApiError('Incorrect email or password', 401));
+  }
+
+  if (!user.active) {
+    return next(new ApiError('Please activate your account first', 403));
   }
   // 3) if everything ok, send token to client
   createSendToken(user, 200, req, res);
@@ -171,8 +225,6 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
     user.passwordResetExpires = undefined;
 
     await user.save({ validateBeforeSave: false });
-
-    // console.error(err);
 
     return next(
       new ApiError(

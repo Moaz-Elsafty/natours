@@ -46,7 +46,6 @@ module.exports = class Email {
       subject,
       html,
       text: htmlToText.htmlToText(html),
-      // html:
     };
 
     // 3) Create a transport and send email
@@ -54,7 +53,10 @@ module.exports = class Email {
   }
 
   async sendWelcome() {
-    await this.send('welcome', 'Welcome to Natours Family!');
+    await this.send(
+      'welcome',
+      'Welcome to Natours Family! Activate your Account to join us!',
+    );
   }
 
   async sendPasswordReset() {

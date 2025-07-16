@@ -48,9 +48,10 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: Date,
   active: {
     type: Boolean,
-    default: true,
-    select: false,
+    default: false,
   },
+  activationToken: String,
+  activationExpires: Date,
 });
 
 userSchema.pre('save', async function (next) {
@@ -103,6 +104,20 @@ userSchema.methods.createPasswordResetToken = function () {
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
   return resetToken;
+};
+
+// Instacne method to generate the activation token
+userSchema.methods.createActivationToken = function () {
+  const activeToken = crypto.randomBytes(32).toString('hex');
+
+  this.activationToken = crypto
+    .createHash('sha256')
+    .update(activeToken)
+    .digest('hex');
+
+  this.activationExpires = Date.now() + 10 * 60 * 1000;
+
+  return activeToken;
 };
 
 const User = mongoose.model('User', userSchema);

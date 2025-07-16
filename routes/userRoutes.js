@@ -21,6 +21,8 @@ const router = express.Router();
 
 // User
 router.post('/signup', singUpValidator, authService.signup);
+router.patch('/activate/:token', authService.activateAcc);
+
 router.post('/login', logInValidator, authService.login);
 router.get('/logout', authService.logout);
 
