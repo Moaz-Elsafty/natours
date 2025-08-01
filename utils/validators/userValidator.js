@@ -153,6 +153,7 @@ exports.updateUserPasswordValidator = [
       if (password !== req.body.passwordConfirm) {
         throw new Error('Password confirmation incorrect');
       }
+      return true;
     }),
 
   body('passwordConfirm')

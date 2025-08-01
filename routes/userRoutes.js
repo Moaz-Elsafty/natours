@@ -23,6 +23,7 @@ const router = express.Router();
 router.post('/signup', singUpValidator, authService.signup);
 router.patch('/activate/:token', authService.activateAcc);
 
+router.post('/refresh-token', authService.refreshTokenHandler);
 router.post('/login', logInValidator, authService.login);
 router.get('/logout', authService.logout);
 
