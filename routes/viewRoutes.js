@@ -5,8 +5,6 @@ const bookingService = require('../services/bookingService');
 
 const router = express.Router();
 
-// router.use(authService.isLoggetIn);
-
 router.get(
   '/',
   bookingService.createBookingCheckout,

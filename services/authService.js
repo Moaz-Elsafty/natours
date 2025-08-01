@@ -4,28 +4,39 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const ApiError = require('../utils/apiError');
 const Email = require('../utils/email');
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require('../utils/generateTokens');
 
-const generateToken = (payload) =>
-  jwt.sign({ id: payload }, process.env.JWT_SECRET_KEY, {
-    expiresIn: process.env.JWT_EXPIRE_TIME,
-  });
+const createSendToken = async (user, statusCode, req, res) => {
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
 
-const createSendToken = (user, statusCode, req, res) => {
-  const token = generateToken(user._id);
-  res.cookie('jwt', token, {
-    expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
-    ),
+  // Hash the refresh token before storing in DB
+  const hashedRefreshToken = crypto
+    .createHash('sha256')
+    .update(refreshToken)
+    .digest('hex');
+
+  // Save hashed token to DB
+  user.refreshToken = hashedRefreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  res.cookie('accessToken', accessToken, {
+    expires: new Date(Date.now() + 15 * 60 * 1000),
     httpOnly: true,
     secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
   });
 
-  // Removes password from the output
+  // Removes password and refreshToken from the output
   user.password = undefined;
+  user.refreshToken = undefined;
 
   res.status(statusCode).json({
     status: 'success',
-    token,
+    accessToken,
+    refreshToken,
     data: {
       user,
     },
@@ -113,12 +124,59 @@ exports.login = asyncHandler(async (req, res, next) => {
   if (!user.active) {
     return next(new ApiError('Please activate your account first', 403));
   }
-  // 3) if everything ok, send token to client
+
+  // 3) if everything ok, send the access token to client
   createSendToken(user, 200, req, res);
 });
 
+exports.refreshTokenHandler = asyncHandler(async (req, res, next) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return next(new ApiError('Refresh token required', 400));
+  }
+
+  // Hash incoming refresh token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(refreshToken)
+    .digest('hex');
+
+  // Find user with that hashed refresh token
+  const user = await User.findOne({ refreshToken: hashedToken });
+
+  if (!user) {
+    return next(new ApiError('Invalid refresh token', 403));
+  }
+
+  // Verify the token is valid and not tampered with
+  let decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET_KEY);
+
+  if (!decoded) {
+    return next(new ApiError('Invalid or expired refresh token', 403));
+  }
+
+  if (decoded.id !== user.id) {
+    return next(new ApiError('Token mismtach', 403));
+  }
+
+  // Issue a new access token
+  const newAccessToken = generateAccessToken(user._id);
+
+  res.cookie('accessToken', newAccessToken, {
+    expires: new Date(Date.now() + 15 * 60 * 1000),
+    httpOnly: true,
+    secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+  });
+
+  res.status(200).json({
+    status: 'success',
+    accessToken: newAccessToken,
+  });
+});
+
 exports.logout = asyncHandler((req, res) => {
-  res.cookie('jwt', 'loggedout', {
+  res.cookie('accessToken', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
   });
@@ -128,13 +186,9 @@ exports.logout = asyncHandler((req, res) => {
 exports.protect = asyncHandler(async (req, res, next) => {
   // 1) Geting token and check if it exits
   let token;
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    token = req.headers.authorization.split(' ')[1];
-  } else if (req.cookies.jwt) {
-    token = req.cookies.jwt;
+
+  if (req.cookies.accessToken) {
+    token = req.cookies.accessToken;
   }
 
   if (!token || token === 'null') {
@@ -171,9 +225,12 @@ exports.protect = asyncHandler(async (req, res, next) => {
 // Only for rendered pages, no errors!
 exports.isLoggetIn = async (req, res, next) => {
   try {
-    if (req.cookies.jwt) {
+    if (req.cookies.accessToken) {
       // 1) verify token
-      const decoded = jwt.verify(req.cookies.jwt, process.env.JWT_SECRET_KEY);
+      const decoded = jwt.verify(
+        req.cookies.accessToken,
+        process.env.JWT_SECRET_KEY,
+      );
 
       // 2) Check if user still exists
       const currentUser = await User.findById(decoded.id);
@@ -263,7 +320,7 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   await user.save();
   // 3) Update changePasswordAt property for the user
 
-  // 4) Log the user in, send JWT
+  // 4) Log the user in, send accessToken
   createSendToken(user, 200, req, res);
 });
 
@@ -279,7 +336,6 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
   await user.save();
-  // 4) Log user in, send JWT
-
+  // 4) Log user in, send access token
   createSendToken(user, 200, req, res);
 });

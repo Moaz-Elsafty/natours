@@ -52,6 +52,10 @@ const userSchema = new mongoose.Schema({
   },
   activationToken: String,
   activationExpires: Date,
+  refreshToken: {
+    type: String,
+    selet: false,
+  },
 });
 
 userSchema.pre('save', async function (next) {
