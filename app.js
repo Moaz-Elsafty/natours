@@ -68,7 +68,7 @@ app.use(
           'ws:',
         ],
         imgSrc: ["'self'", 'data:', 'https://api.mapbox.com'],
-        workerSrc: ["'self'", 'blob:'], // 🔥 Allow workers from blob:
+        workerSrc: ["'self'", 'blob:'],
       },
     },
   }),

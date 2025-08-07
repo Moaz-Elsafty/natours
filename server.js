@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 // Handling Synchronous Errors
 process.on('uncaughtException', (err) => {
   console.error(`UncaughtException Errors: ${err.name} | ${err.message}`);
+  console.error(err.stack);
   console.error('Shutting down....');
   process.exit(1);
 });
