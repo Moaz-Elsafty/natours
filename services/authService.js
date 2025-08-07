@@ -11,6 +11,8 @@ const {
   generateRefreshToken,
 } = require('../utils/generateTokens');
 
+const { encrypt, decrypt } = require('../utils/encryption');
+
 const createSendToken = async (user, statusCode, req, res) => {
   const accessToken = generateAccessToken(user._id);
   const refreshToken = generateRefreshToken(user._id);
@@ -51,10 +53,11 @@ exports.enable2FA = asyncHandler(async (req, res, next) => {
     name: `MyApp (${req.user.email})`,
   });
 
+  const encryptedSecret = encrypt(secret.base32);
   // Store secret.base32 in your DB for this user
   await User.findByIdAndUpdate(req.user.id, {
     twoFAEnabled: true,
-    twoFASecret: secret.base32,
+    twoFASecret: encryptedSecret,
   });
 
   // Generate QR code for scanning
@@ -70,8 +73,10 @@ exports.verify2FA = asyncHandler(async (req, res, next) => {
 
   const user = await User.findById(userId);
 
+  const decryptedSecret = await decrypt(user.twoFASecret);
+
   const verified = speakeasy.totp.verify({
-    secret: user.twoFASecret,
+    secret: decryptedSecret,
     encoding: 'base32',
     token,
     window: 1,
