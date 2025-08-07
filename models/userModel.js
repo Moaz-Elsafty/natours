@@ -56,6 +56,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     selet: false,
   },
+  twoFAEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  twoFASecret: String,
 });
 
 userSchema.pre('save', async function (next) {

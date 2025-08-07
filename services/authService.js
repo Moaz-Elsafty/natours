@@ -1,5 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const ApiError = require('../utils/apiError');
@@ -42,6 +44,45 @@ const createSendToken = async (user, statusCode, req, res) => {
     },
   });
 };
+
+// Enable 2FA
+exports.enable2FA = asyncHandler(async (req, res, next) => {
+  const secret = speakeasy.generateSecret({
+    name: `MyApp (${req.user.email})`,
+  });
+
+  // Store secret.base32 in your DB for this user
+  await User.findByIdAndUpdate(req.user.id, {
+    twoFAEnabled: true,
+    twoFASecret: secret.base32,
+  });
+
+  // Generate QR code for scanning
+  qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
+    if (err) return next(new ApiError('QR Code error', 500));
+    res.json({ qrcode: data_url, secret: secret.base32 });
+  });
+});
+
+// Verify 2FA
+exports.verify2FA = asyncHandler(async (req, res, next) => {
+  const { userId, token } = req.body;
+
+  const user = await User.findById(userId);
+
+  const verified = speakeasy.totp.verify({
+    secret: user.twoFASecret,
+    encoding: 'base32',
+    token,
+    window: 1,
+  });
+
+  if (!verified) {
+    return next(new ApiError('Invalid or expired 2FA token', 401));
+  }
+
+  createSendToken(user, 200, req, res);
+});
 
 exports.signup = asyncHandler(async (req, res, next) => {
   const newUser = await User.create({
@@ -125,7 +166,16 @@ exports.login = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Please activate your account first', 403));
   }
 
-  // 3) if everything ok, send the access token to client
+  // 3) Check if 2FA is enabled
+  if (user.twoFAEnabled && user.twoFASecret) {
+    return res.status(200).json({
+      status: '2fa_requried',
+      userId: user._id,
+      message: 'Two-factor authentication code required',
+    });
+  }
+
+  // 4) if everything ok & 2FA not enabled → issue tokens.
   createSendToken(user, 200, req, res);
 });
 
