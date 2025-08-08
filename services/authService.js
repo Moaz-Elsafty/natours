@@ -63,8 +63,28 @@ exports.enable2FA = asyncHandler(async (req, res, next) => {
   // Generate QR code for scanning
   qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
     if (err) return next(new ApiError('QR Code error', 500));
-    res.json({ qrcode: data_url, secret: secret.base32 });
+    res.json({ qrcode: data_url });
   });
+});
+
+// Disable 2FA
+exports.disable2FA = asyncHandler(async (req, res, next) => {
+  // 1) First check if the user logged in or not
+  if (!req.user) {
+    return next(new ApiError('You have to log in first', 401));
+  }
+
+  // 2) Find the user that want to disable 2FA from DB
+  const user = await User.findById(req.user.id);
+
+  // 3) Update the value of "twoFAEnabled" to be false & twoFASecret to be undefined
+  user.twoFAEnabled = false;
+  user.twoFASecret = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  res
+    .status(200)
+    .json({ status: 'success', message: '2FA has been disabled successfully' });
 });
 
 // Verify 2FA
@@ -73,7 +93,7 @@ exports.verify2FA = asyncHandler(async (req, res, next) => {
 
   const user = await User.findById(userId);
 
-  const decryptedSecret = await decrypt(user.twoFASecret);
+  const decryptedSecret = decrypt(user.twoFASecret);
 
   const verified = speakeasy.totp.verify({
     secret: decryptedSecret,
