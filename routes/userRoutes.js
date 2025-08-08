@@ -32,7 +32,8 @@ router.patch('/resetPassword/:token', authService.resetPassword);
 
 // This endpoint is hit when the user enables 2FA in their settings
 router.get('/generate-2fa', authService.protect, authService.enable2FA);
-router.post('/verify-2fa', authService.verify2FA);
+router.post('/verify-2fa', authService.protect, authService.verify2FA);
+router.get('/disable-2fa', authService.protect, authService.disable2FA);
 
 // Protects all the routes after this middleware
 router.use(authService.protect);
