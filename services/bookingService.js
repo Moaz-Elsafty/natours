@@ -74,6 +74,21 @@ exports.bookedBefore = async (req, res, next) => {
   next();
 };
 
+// This function checks the avalibality of a tour if it is fully booked or not
+exports.checkTourAvalability = asyncHandler(async (req, res, next) => {
+  const id = req.body.tour || req.params.tourId || req.params.id;
+  const tour = await Tour.findById(id);
+
+  const checkTourAvalability = tour.soldOut;
+
+  if (checkTourAvalability) {
+    return res.status(200).json({
+      msg: 'This tour is sold out. Do you want to join the waiting list?',
+    });
+  }
+  next();
+});
+
 // for the nested route /api/v1/tours/:tourId/bookings
 // &
 // for the nested route /api/v1/users/:id/bookings

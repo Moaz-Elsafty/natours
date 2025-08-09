@@ -13,7 +13,11 @@ const router = express.Router({ mergeParams: true });
 
 router.use(authService.protect);
 
-router.get('/checkout-session/:tourId', bookingService.getChechoutSession);
+router.get(
+  '/checkout-session/:tourId',
+  bookingService.checkTourAvalability,
+  bookingService.getChechoutSession,
+);
 
 router.use(authService.allowedTo('admin', 'lead-guide'));
 
@@ -23,13 +27,18 @@ router
   .post(
     createBookingValidator,
     bookingService.bookedBefore,
+    bookingService.checkTourAvalability,
     bookingService.createBooking,
   );
 
 router
   .route('/:id')
   .get(getBookingValidator, bookingService.getBooking)
-  .patch(updateBookingValidator, bookingService.updateBooking)
+  .patch(
+    bookingService.checkTourAvalability,
+    updateBookingValidator,
+    bookingService.updateBooking,
+  )
   .delete(deleteBookingValidator, bookingService.deleteBooking);
 
 module.exports = router;
