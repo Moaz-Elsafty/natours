@@ -1,9 +1,10 @@
-const { check, body } = require('express-validator');
+const { check, body, param } = require('express-validator');
 const slugify = require('slugify');
 const {
   validatorMiddleware,
 } = require('../../middlewares/validatorMiddleware');
 const User = require('../../models/userModel');
+const Tour = require('../../models/tourModel');
 
 exports.createTourValidator = [
   check('name')
@@ -39,6 +40,13 @@ exports.createTourValidator = [
     .withMessage('Group size value must be a number')
     .notEmpty()
     .withMessage('A tour must have a group size determined.'),
+
+  check('soldOut')
+    .optional()
+    .isBoolean()
+    .withMessage('The value must be boolean')
+    .notEmpty()
+    .withMessage('Please determine weather this tour is fully booked or not.'),
 
   check('difficulty')
     .notEmpty()
@@ -78,8 +86,9 @@ exports.createTourValidator = [
     }),
 
   check('imageCover')
-    .notEmpty()
-    .withMessage('Tour must have a cover image to be created.')
+    // .notEmpty()
+    // .withMessage('Tour must have a cover image to be created.')
+    .optional()
     .custom((val) => {
       const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
       return allowedExtensions.some((ext) => val.toLowerCase().endsWith(ext)); //will return true if the filename ends with any of the allowed extensions.
@@ -118,17 +127,17 @@ exports.createTourValidator = [
     .custom((val) => {
       const invalidDates = val.filter((dateString) => {
         // 1) Ensure it is a string
-        if (typeof dateString !== 'string') {
+        if (typeof dateString.date !== 'string') {
           return true;
         }
         // 2) Check if Date.parse() returns NaN
-        const timeStamp = Date.parse(dateString);
+        const timeStamp = Date.parse(dateString.date);
         if (isNaN(timeStamp)) {
           return true;
         }
         // 3) Compare if the conversion of the input date string to ISO date !== input
-        const inputDate = new Date(dateString);
-        return inputDate.toISOString() !== dateString;
+        const inputDate = new Date(dateString.date);
+        return inputDate.toISOString() !== dateString.date;
       });
       if (invalidDates.length > 0) {
         throw new Error('Please enter a valid starting dates');
@@ -139,7 +148,7 @@ exports.createTourValidator = [
     .custom((val) => {
       // Check if each date in the array is larger than Date.now() if not will be added to new array and stored in oldDates
       const oldDates = val.filter((dateString) => {
-        if (Date.parse(dateString) < Date.now()) {
+        if (Date.parse(dateString.date) < Date.now()) {
           return true;
         }
         return false;
@@ -147,6 +156,38 @@ exports.createTourValidator = [
       // if oldDates.length > 0 then that mean there are old dates
       if (oldDates.length > 0) {
         throw new Error('Invalid input dates');
+      }
+      return true;
+    })
+    // Custom validation to make sure that each date participants does not exceed the number of maxGroupSize specified for the tour.
+    .custom((val, { req }) => {
+      val.filter((startDate) => {
+        if (startDate.participants > req.body.maxGroupSize) {
+          throw new Error(
+            `This Date: ${startDate.date} exceeds the maxGroupSize specified for the tour`,
+          );
+        }
+
+        if (startDate.participants === req.body.maxGroupSize) {
+          startDate.soldOut = true;
+        }
+      });
+      return true;
+    })
+    // Custom validation to loop on the dates if all are soldOut then soldOut field must change to true
+    // if all the dates are soldOut then all the tour will be soldOut
+    .custom((val, { req }) => {
+      const startDates = val;
+
+      const soldOut = startDates.filter((date) => {
+        if (date.soldOut === true) {
+          return true;
+        }
+        return false;
+      });
+
+      if (soldOut.length === startDates.length) {
+        req.body.soldOut = true;
       }
       return true;
     }),
@@ -219,7 +260,17 @@ exports.getTourValidator = [
 ];
 
 exports.updateTourValidator = [
-  check('id').isMongoId().withMessage('Invalid ID Format'),
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid ID Format')
+    .custom(async (val) => {
+      const tour = await Tour.findById(val);
+
+      if (!tour) {
+        throw new Error("'This tour doesn't exist anymore.");
+      }
+      return true;
+    }),
 
   check('name')
     .optional()
@@ -241,6 +292,12 @@ exports.updateTourValidator = [
     .withMessage('Group size value must be a number')
     .notEmpty()
     .withMessage('A tour must have a group size determined.'),
+
+  check('soldOut')
+    .optional()
+    .isBoolean()
+    .withMessage('The value must be boolean')
+    .default(false),
 
   check('difficulty')
     .optional()
@@ -312,17 +369,17 @@ exports.updateTourValidator = [
     .custom((val) => {
       const invalidDates = val.filter((dateString) => {
         // 1) Ensure it is a string
-        if (typeof dateString !== 'string') {
+        if (typeof dateString.date !== 'string') {
           return true;
         }
         // 2) Check if Date.parse() returns NaN
-        const timeStamp = Date.parse(dateString);
+        const timeStamp = Date.parse(dateString.date);
         if (isNaN(timeStamp)) {
           return true;
         }
         // 3) Compare if the conversion of the input date string to ISO date !== input
-        const inputDate = new Date(dateString);
-        return inputDate.toISOString() !== dateString;
+        const inputDate = new Date(dateString.date);
+        return inputDate.toISOString() !== dateString.date;
       });
       if (invalidDates.length > 0) {
         throw new Error('Please enter a valid starting dates');
@@ -341,6 +398,38 @@ exports.updateTourValidator = [
       // if oldDates.length > 0 then that mean there are old dates
       if (oldDates.length > 0) {
         throw new Error('Invalid input dates');
+      }
+      return true;
+    })
+    // Custom validation to make sure that each date participants does not exceed the number of maxGroupSize specified for the tour.
+    .custom(async (val, { req }) => {
+      const tour = await Tour.findById(req.params.id);
+      val.filter((startDate) => {
+        if (startDate.participants > req.body.maxGroupSize) {
+          throw new Error(
+            `This Date: ${startDate.date} exceeds the maxGroupSize specified for the tour`,
+          );
+        }
+
+        if (startDate.participants === tour.maxGroupSize) {
+          startDate.soldOut = true;
+        }
+      });
+      return true;
+    })
+    // if all the dates are soldOut then update the tour to be soldOut
+    .custom((val, { req }) => {
+      const startDates = val;
+
+      const soldOut = startDates.filter((date) => {
+        if (date.soldOut === true) {
+          return true;
+        }
+        return false;
+      });
+
+      if (soldOut.length === startDates.length) {
+        req.body.soldOut = true;
       }
       return true;
     }),
