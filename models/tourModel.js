@@ -25,6 +25,10 @@ const tourSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'A tour must have a group size'],
     },
+    soldOut: {
+      type: Boolean,
+      default: false,
+    },
     difficulty: {
       type: String,
       required: [true, 'A tour must have a difficulty'],
@@ -54,14 +58,6 @@ const tourSchema = new mongoose.Schema(
     },
     priceAfterDiscount: {
       type: Number,
-      // validate is used to create custom validation
-      validate: {
-        validator: function (val) {
-          // this only points to current doc on NEW document creation
-          return val < this.price;
-        },
-        message: 'Discount price {VALUE} should be below regular price',
-      },
     },
     description: {
       type: String,
@@ -70,7 +66,7 @@ const tourSchema = new mongoose.Schema(
     },
     imageCover: {
       type: String,
-      required: [true, 'A tour must have a cover image'],
+      // required: [true, 'A tour must have a cover image'],
     },
     images: [String],
     createdAt: {
@@ -78,7 +74,16 @@ const tourSchema = new mongoose.Schema(
       default: Date.now(),
       select: false,
     },
-    startDates: [Date],
+    startDates: [
+      {
+        date: Date,
+        participants: {
+          type: Number,
+          default: 0,
+        },
+        soldOut: { type: Boolean, default: false },
+      },
+    ],
     secretTour: {
       type: Boolean,
       default: false,
