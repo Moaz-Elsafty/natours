@@ -45,6 +45,13 @@ router
     tourService.createTour,
   );
 
+// ---------------------------------------------------
+// The below routes handles waiting list logic
+router.route('/:id/waiting-list').patch(tourService.addToWaitingList);
+
+router.route('/:id/waiting-list/:userId').delete(tourService.exitWaitingList);
+
+// ---------------------------------------------------
 router
   .route('/:id')
   .get(getTourValidator, tourService.getTour)

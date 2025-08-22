@@ -46,7 +46,52 @@ exports.createTourValidator = [
     .isBoolean()
     .withMessage('The value must be boolean')
     .notEmpty()
-    .withMessage('Please determine weather this tour is fully booked or not.'),
+    .withMessage('Please determine whether  this tour is fully booked or not.'),
+
+  check('waitingListAvailability')
+    .notEmpty()
+    .withMessage(
+      'Please specify whether you want to allow waiting list to the this tour or not.',
+    )
+    .isBoolean()
+    .withMessage('Only accepts True or False'),
+
+  check('waitingList')
+    // if waiting list availability is false then skip this validation
+    .if(check('waitingListAvailability').equals('true'))
+    .notEmpty()
+    .withMessage('Please specifiy the waiting list details.')
+    .isArray()
+    .withMessage('The waiting must be an array of the dates')
+    // Validate the users id
+    .custom(async (val, { req }) => {
+      const invalidUsers = [];
+      for (let i = 0; i < val.length; i++) {
+        const user = await User.findById(val[i].user);
+        if (!user) invalidUsers.push(val[i].user);
+      }
+
+      if (invalidUsers.length > 0) {
+        throw new Error(`Invalid users ids: ${invalidUsers}`);
+      }
+
+      return true;
+    })
+    // Custom validation to make sure the number of waiting list users does not exceed the waitingListLimit
+    .custom((val, { req }) => {
+      if (val.length > req.body.waitingListLimit) {
+        throw new Error(
+          'The number of waiting users exceeds the specified waiting list limit',
+        );
+      }
+      return true;
+    }),
+
+  check('waitingListLimit')
+    // if waiting list availability is false then skip this validation
+    .if(check('waitingListAvailability').equals('true'))
+    .isInt({ max: 20 })
+    .withMessage('Only accepts numbers and not exceed 20'),
 
   check('difficulty')
     .notEmpty()
@@ -299,6 +344,54 @@ exports.updateTourValidator = [
     .withMessage('The value must be boolean')
     .default(false),
 
+  check('waitingListAvailability')
+    .optional()
+    .notEmpty()
+    .withMessage(
+      'Please specify whether you want to allow waiting list to the this tour or not.',
+    )
+    .isBoolean()
+    .withMessage('Only accepts True or False'),
+
+  check('waitingList')
+    .optional()
+    // if waiting list availability is false then skip this validation
+    .if(check('waitingListAvailability').equals('true'))
+    .notEmpty()
+    .withMessage('Please specifiy the waiting list details.')
+    .isArray()
+    .withMessage('The waiting must be an array of the dates')
+    // Validate the users id
+    .custom(async (val, { req }) => {
+      const invalidUsers = [];
+      for (let i = 0; i < val.length; i++) {
+        const user = await User.findById(val[i].user);
+        if (!user) invalidUsers.push(val[i].user);
+      }
+
+      if (invalidUsers.length > 0) {
+        throw new Error(`Invalid users ids: ${invalidUsers}`);
+      }
+
+      return true;
+    })
+    // Custom validation to make sure the number of waiting list users does not exceed the waitingListLimit
+    .custom((val, { req }) => {
+      if (val.length > req.body.waitingListLimit) {
+        throw new Error(
+          'The number of waiting users exceeds the specified waiting list limit',
+        );
+      }
+      return true;
+    }),
+
+  check('waitingListLimit')
+    .optional()
+    // if waiting list availability is false then skip this validation
+    .if(check('waitingListAvailability').equals('true'))
+    .isInt({ max: 20 })
+    .withMessage('Only accepts numbers and not exceed 20'),
+
   check('difficulty')
     .optional()
     .notEmpty()
@@ -405,7 +498,7 @@ exports.updateTourValidator = [
     .custom(async (val, { req }) => {
       const tour = await Tour.findById(req.params.id);
       val.filter((startDate) => {
-        if (startDate.participants > req.body.maxGroupSize) {
+        if (startDate.participants > tour.maxGroupSize) {
           throw new Error(
             `This Date: ${startDate.date} exceeds the maxGroupSize specified for the tour`,
           );
@@ -413,12 +506,15 @@ exports.updateTourValidator = [
 
         if (startDate.participants === tour.maxGroupSize) {
           startDate.soldOut = true;
+        } else {
+          startDate.soldOut = false;
         }
       });
       return true;
     })
-    // if all the dates are soldOut then update the tour to be soldOut
-    .custom((val, { req }) => {
+    // if all the dates are soldOut then update the whole tour to be soldOut
+    .custom(async (val, { req }) => {
+      const tour = await Tour.findById(req.params.id);
       const startDates = val;
 
       const soldOut = startDates.filter((date) => {
@@ -429,7 +525,9 @@ exports.updateTourValidator = [
       });
 
       if (soldOut.length === startDates.length) {
-        req.body.soldOut = true;
+        tour.soldOut = true;
+      } else {
+        tour.soldOut = false;
       }
       return true;
     }),
