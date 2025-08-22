@@ -29,6 +29,30 @@ const tourSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    waitingListAvailability: {
+      type: Boolean,
+      required: true,
+    },
+
+    waitingList: [
+      {
+        user: {
+          type: mongoose.Schema.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        joinedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    waitingListLimit: {
+      type: Number,
+    },
+
     difficulty: {
       type: String,
       required: [true, 'A tour must have a difficulty'],

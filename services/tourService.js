@@ -2,6 +2,7 @@ const multer = require('multer');
 const sharp = require('sharp');
 const asyncHandler = require('express-async-handler');
 const Tour = require('./../models/tourModel');
+const User = require('./../models/userModel');
 
 const factory = require('./handlerFactory');
 const ApiError = require('../utils/apiError');
@@ -227,5 +228,93 @@ exports.getDistances = asyncHandler(async (req, res, next) => {
     data: {
       data: distances,
     },
+  });
+});
+
+// Adding users to the waiting list
+exports.addToWaitingList = asyncHandler(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.id);
+
+  if (!tour) {
+    return next(
+      new ApiError(`There is no tour with such id: ${req.params.id}`, 404),
+    );
+  }
+
+  if (!tour.waitingListAvailability) {
+    return next(new ApiError('This feature is not available', 401));
+  }
+
+  if (tour.waitingList.length === tour.waitingListLimit) {
+    return next(
+      new ApiError('The waiting list is fully booked. Check out later!'),
+    );
+  }
+
+  // Check if the added users already in the waiting list
+  const addedUsers = [];
+  const dbWaitingList = [];
+
+  req.body.waitingList.forEach((el) => {
+    addedUsers.push(el.user);
+  });
+
+  tour.waitingList.forEach((el) => {
+    dbWaitingList.push(el.user.toString());
+  });
+
+  const existedUser = dbWaitingList.filter((user) => {
+    if (addedUsers.includes(user)) {
+      return true;
+    }
+  });
+
+  if (existedUser.length > 0) {
+    return next(
+      new ApiError(
+        `The following ids already in the waiting list ${existedUser}`,
+        409,
+      ),
+    );
+  }
+
+  req.body.waitingList.forEach((wl) => {
+    tour.waitingList.push({ user: wl.user });
+  });
+
+  if (tour.waitingList.length > tour.waitingListLimit) {
+    return next(
+      new ApiError(
+        'You have exceeded the waiting list limit. Please, reduce the participants',
+        409,
+      ),
+    );
+  }
+
+  await tour.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      waitingList: tour.waitingList,
+    },
+  });
+});
+
+exports.exitWaitingList = asyncHandler(async (req, res, next) => {
+  const { id, userId } = req.params;
+  const updatedTour = await Tour.findByIdAndUpdate(
+    id,
+    { $pull: { waitingList: { user: userId } } },
+    { new: true },
+  );
+
+  if (!updatedTour) {
+    return next(new ApiError('Tour not found', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: updatedTour,
   });
 });
