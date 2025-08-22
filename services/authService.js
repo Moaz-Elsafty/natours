@@ -110,6 +110,7 @@ exports.verify2FA = asyncHandler(async (req, res, next) => {
 });
 
 exports.signup = asyncHandler(async (req, res, next) => {
+  console.log('in');
   const newUser = await User.create({
     name: req.body.name,
     email: req.body.email,

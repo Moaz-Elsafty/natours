@@ -23,6 +23,8 @@ exports.getTour = asyncHandler(async (req, res, next) => {
     field: 'review rating user',
   });
 
+  console.log(tour.startDates);
+
   // if (!tour) {
   //   return next(new ApiError(`There is no tour with that name`, 404));
   // }
@@ -39,6 +41,13 @@ exports.getLoginForm = asyncHandler(async (req, res) => {
   // Build template
   res.status(200).render('login', {
     title: 'Login',
+  });
+});
+
+exports.getSignupForm = asyncHandler(async (req, res) => {
+  // Build template
+  res.status(200).render('signup', {
+    title: 'Signup',
   });
 });
 
